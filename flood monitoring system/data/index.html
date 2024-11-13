@@ -1,0 +1,319 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Flood Monitoring System</title>
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+  <style>
+    /* CSS Variables for Light and Dark Mode */
+    :root {
+      --bg-color: #e0f7fa;
+      --text-color: #333;
+      --primary-color: #00796b;
+      --warning-color: #ffb300;
+      --alert-color: #d32f2f;
+    }
+    [data-theme='dark'] {
+      --bg-color: #121212;
+      --text-color: #e0e0e0;
+      --primary-color: #1de9b6;
+      --warning-color: #ffeb3b;
+      --alert-color: #ff5252;
+    }
+    
+    /* General Body and Text Styling */
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: 'Arial', sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      text-align: center;
+      padding: 20px;
+      transition: background-color 0.5s ease, color 0.5s ease;
+    }
+
+    h2 {
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+      font-weight: bold;
+      color: var(--primary-color);
+    }
+
+    /* LED Styles */
+    .container {
+      display: flex;
+      justify-content: center;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+    .led {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      margin: 10px;
+      background-color: grey;
+      color: white;
+      font-size: 1.5rem;
+      transition: background-color 0.5s ease, transform 0.3s ease;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    .led.green { background-color: #4caf50; }
+    .led.yellow { background-color: #ffeb3b; }
+    .led.red { background-color: #f44336; }
+
+    .buzzer-status {
+      margin-top: 20px;
+      font-size: 1.2rem;
+      color: var(--primary-color);
+    }
+
+    /* Flood Safety Tips and Login Form Styling */
+    .tip-section, .login-form {
+      margin-top: 30px;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      transition: background-color 0.5s ease;
+    }
+    [data-theme='dark'] .tip-section,
+    [data-theme='dark'] .login-form {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .tip-section h3, .login-form h3 {
+      font-size: 1.8rem;
+      color: var(--primary-color);
+    }
+    .tip-section p {
+      color: black;
+    }
+    [data-theme='dark'] .tip-section p,
+    [data-theme='dark'] .login-form p {
+      color: #e0e0e0;
+    }
+
+    /* Admin Login Form Styling */
+    .login-form {
+      margin-top: 30px;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      transition: background-color 0.5s ease;
+    }
+
+    .login-form h3 {
+      font-size: 1.8rem;
+      color: var(--primary-color);
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .login-input {
+      width: 100%;
+      padding: 12px 15px;
+      font-size: 1.1rem;
+      border: 2px solid #ccc;
+      border-radius: 5px;
+      box-sizing: border-box;
+      background-color: #fff;
+      transition: border-color 0.3s ease;
+    }
+
+    .login-input:focus {
+      border-color: var(--primary-color);
+      outline: none;
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 12px;
+      font-size: 1.2rem;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .login-btn:hover {
+      background-color: var(--warning-color);
+    }
+
+    /* Theme Toggle Button */
+    .theme-toggle {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      font-size: 1.2rem;
+    }
+    .theme-toggle:hover {
+      background-color: var(--warning-color);
+    }
+
+    /* Mobile Responsiveness */
+    @media (max-width: 600px) {
+      h2 { font-size: 2rem; }
+      .led {
+        width: 100px;
+        height: 100px;
+        font-size: 1rem;
+      }
+      .tip-section h3, .login-form h3 {
+        font-size: 1.5rem;
+      }
+      .login-form input, .login-form button {
+        width: 100%;
+        padding: 12px;
+        font-size: 1.1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h2>Flood Monitoring System</h2>
+  </header>
+  <main>
+    <!-- Chart Container -->
+    <div id="chart-distance" class="container" role="region" aria-labelledby="chart-title">
+      <h3 id="chart-title" hidden>Distance Monitoring Chart</h3>
+    </div>
+
+    <!-- LED Indicators for Status -->
+    <div class="container">
+      <div id="led-green" class="led" role="status" aria-live="polite">Safe</div>
+      <div id="led-yellow" class="led">Warning</div>
+      <div id="led-red" class="led">Alert</div>
+    </div>
+
+    <!-- Buzzer Status Display -->
+    <div class="buzzer-status" id="buzzer-status" role="alert">Buzzer Status: Off</div>
+
+    <!-- Flood Safety Tips Section -->
+    <section class="tip-section">
+      <h3>Flood Safety Tips</h3>
+      <p>Stay informed about the weather conditions. Have an emergency kit ready.</p>
+      <p>Know your evacuation routes and have a plan in place.</p>
+    </section>
+
+    <!-- Admin Login Form -->
+    <div class="login-form">
+      <h3>Admin Login</h3>
+      <form action="admin.html" method="get">
+        <div class="form-group">
+          <input type="text" name="username" placeholder="Username" required class="login-input">
+        </div>
+        <div class="form-group">
+          <input type="password" name="password" placeholder="Password" required class="login-input">
+        </div>
+        <div class="form-group">
+          <button type="submit" class="login-btn">Login</button>
+        </div>
+      </form>
+    </div>
+  
+    <!-- Theme Toggle Button -->
+    <footer>
+      <button class="theme-toggle" id="theme-toggle">Switch to Dark Mode</button>
+    </footer>
+  </main>
+
+  <script>
+    // Automatic Theme Detection and Toggle
+    const themeToggle = document.getElementById('theme-toggle');
+    let darkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.body.setAttribute('data-theme', darkMode ? 'dark' : 'light');
+    themeToggle.innerText = darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+
+    // Listener for theme preference changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+      darkMode = event.matches;
+      document.body.setAttribute('data-theme', darkMode ? 'dark' : 'light');
+      themeToggle.innerText = darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+    });
+
+    // Toggle theme manually when button is clicked
+    themeToggle.addEventListener('click', () => {
+      darkMode = !darkMode;
+      document.body.setAttribute('data-theme', darkMode ? 'dark' : 'light');
+      themeToggle.innerText = darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+    });
+
+    // Highcharts Configuration for Distance Monitoring
+    var chartT = new Highcharts.Chart({
+      chart: { renderTo: 'chart-distance' },
+      title: { text: 'Distance Monitoring' },
+      series: [{ showInLegend: false, data: [] }],
+      plotOptions: {
+        line: { animation: false, dataLabels: { enabled: true } },
+        series: { color: '#059e8a' }
+      },
+      xAxis: { type: 'datetime', dateTimeLabelFormats: { second: '%H:%M:%S' } },
+      yAxis: { title: { text: 'Distance (CM)' }, gridLineColor: '#f0f0f0' },
+      credits: { enabled: false }
+    });
+
+    // Fetch distance data periodically and update the chart and LEDs
+    setInterval(() => {
+      fetch("/distance")
+        .then(response => {
+          if (!response.ok) throw new Error('Network response was not ok');
+          return response.json();
+        })
+        .then(data => {
+          const x = (new Date()).getTime();
+          const y = parseFloat(data.distance) || 0;
+          chartT.series[0].addPoint([x, y], true, chartT.series[0].data.length > 40);
+          updateLEDs(y, data.led);
+          document.getElementById('buzzer-status').innerText = data.buzzer === "1" ? "Buzzer Status: On" : "Buzzer Status: Off";
+        })
+        .catch(error => console.error("Request failed: " + error));
+    }, 1000);
+
+    // Update LED indicators based on distance and server LED state
+    function updateLEDs(distance, ledState) {
+      const greenLED = document.getElementById('led-green');
+      const yellowLED = document.getElementById('led-yellow');
+      const redLED = document.getElementById('led-red');
+
+      // Reset all LEDs to grey
+      greenLED.className = 'led';
+      yellowLED.className = 'led';
+      redLED.className = 'led';
+
+      // Update LED states based on distance
+      if (distance > 9.0) {
+        greenLED.className += ' green'; // Safe zone
+      } else if (distance > 5.0 && distance <= 9.0) {
+        yellowLED.className += ' yellow'; // Warning zone
+      } else {
+        redLED.className += ' red'; // Danger zone
+      }
+
+      // Set LED state according to server response
+      if (ledState === "green") {
+        greenLED.className += ' green';
+      } else if (ledState === "yellow") {
+        yellowLED.className += ' yellow';
+      } else if (ledState === "red") {
+        redLED.className += ' red';
+      }
+    }
+  </script>
+</body>
+</html>

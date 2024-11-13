@@ -1,0 +1,304 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Flood Monitoring System - Admin Dashboard</title>
+  <style>
+    /* Global Styles */
+    :root {
+      --bg-color: #e0f7fa;
+      --text-color: #333;
+      --primary-color: #00796b;
+      --table-bg-color: #ffffff;
+      --table-border-color: #ccc;
+    }
+
+    /* Dark Mode Overrides */
+    [data-theme='dark'] {
+      --bg-color: #1e1e1e;
+      --text-color: #e0e0e0;
+      --primary-color: #1de9b6;
+      --table-bg-color: #2c2c2c;
+      --table-border-color: #444;
+    }
+
+    /* Body and Text Styling */
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: 'Arial', sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    h2, h3 {
+      color: var(--primary-color);
+      margin-bottom: 10px;
+    }
+
+    .control-panel {
+      font-size: 1.5em;
+      margin: 20px 0;
+      color: var(--primary-color);
+    }
+
+    button, input[type="button"], input[type="submit"] {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 10px 15px;
+      margin: 10px 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover, input[type="button"]:hover, input[type="submit"]:hover {
+      background-color: #ffeb3b;
+    }
+
+    select {
+      margin: 10px 5px;
+      padding: 10px;
+      border: 1px solid var(--table-border-color);
+      border-radius: 4px;
+      width: 100%;
+      max-width: 150px;
+    }
+
+    /* Table Styling */
+    table {
+      margin: 20px auto;
+      border-collapse: collapse;
+      width: 100%;
+      max-width: 800px;
+      background-color: var(--table-bg-color);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    th, td {
+      border: 1px solid var(--table-border-color);
+      padding: 12px;
+      text-align: center;
+      color: var(--text-color);
+    }
+
+    th {
+      background-color: var(--primary-color);
+      color: white;
+    }
+
+    #sensor-status {
+      font-weight: bold;
+      margin: 20px 0;
+    }
+
+    .form-container {
+      margin: 20px auto;
+      padding: 15px;
+      border: 1px solid var(--table-border-color);
+      border-radius: 5px;
+      background-color: var(--table-bg-color);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .control-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 15px 0;
+    }
+
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 15px;
+      width: 100%;
+      max-width: 900px;
+    }
+
+    @media (max-width: 600px) {
+      .control-panel {
+        font-size: 1.2em;
+      }
+      table {
+        font-size: 0.9em;
+      }
+      select {
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h2>Flood Monitoring System - Admin Dashboard</h2>
+  <p>Welcome, Admin!</p>
+  <button class="logout-button" onclick="logout()">Logout</button>
+
+  <div class="form-container">
+    <div class="control-panel">Control Panel</div>
+    
+    <div class="grid-container">
+      <div class="control-section">
+        <h4>Control Sensor</h4>
+        <button id="toggle-sensor" onclick="toggleSensor()">Toggle Sensor</button>
+        <p id="sensor-status">Sensor is currently: <span id="status-text">OFF</span></p>
+      </div>
+
+      <div class="control-section">
+        <h4>Manage Recorded Data</h4>
+        <form id="filter-form">
+          <label for="timeframe">Select timeframe:</label>
+          <select id="timeframe">
+            <option value="day">Today</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+          </select>
+          <input type="button" value="Filter" onclick="filterRecords()">
+          <input type="button" value="Delete Selected" onclick="confirmDeleteSelected()">
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <h3>Recorded Data</h3>
+  <table id="data-table">
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Distance (CM)</th>
+        <th>Select</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Data will be inserted here -->
+    </tbody>
+  </table>
+
+  <button class="theme-toggle" id="theme-toggle">Switch to Dark Mode</button>
+
+  <script>
+    let recordedData = [];
+    let sensorEnabled = false;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Initialize theme based on user preference
+      const prefersDarkScheme = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      if (prefersDarkScheme) {
+        document.body.setAttribute('data-theme', 'dark');
+        document.getElementById('theme-toggle').innerText = 'Switch to Light Mode';
+      }
+
+      // Initialize sensor state and update UI
+      sensorEnabled = false; 
+      document.getElementById('status-text').innerText = "OFF";
+
+      // Fetch recorded data on load
+      fetchRecordedData();
+
+      // Poll for latest data every 5 seconds if sensor is ON
+      setInterval(fetchLatestData, 5000);
+    });
+
+    function fetchRecordedData() {
+      fetch('/recorded_data')
+        .then(response => response.json())
+        .then(data => {
+          data.forEach(record => addRow(record));
+        })
+        .catch(error => console.error('Error fetching recorded data:', error));
+    }
+
+    function fetchLatestData() {
+      if (!sensorEnabled) return;
+
+      fetch('/latest_data')
+        .then(response => response.json())
+        .then(data => {
+          const timestamp = new Date().toLocaleString();
+          recordedData.push({ timestamp, distance: data.distance });
+          addRow({ timestamp, distance: data.distance });
+        })
+        .catch(error => console.error('Error fetching latest data:', error));
+    }
+
+    function toggleSensor() {
+      fetch('/toggle_sensor')
+        .then(response => {
+          if (!response.ok) throw new Error('Failed to toggle sensor');
+          return response.text();
+        })
+        .then(status => {
+          sensorEnabled = !sensorEnabled;
+          document.getElementById('status-text').innerText = sensorEnabled ? "ON" : "OFF";
+          localStorage.setItem('sensorStatus', sensorEnabled);
+        })
+        .catch(error => alert(error));
+    }
+
+    function addRow(record) {
+      const table = document.getElementById('data-table').getElementsByTagName('tbody')[0];
+      const newRow = table.insertRow();
+      newRow.insertCell(0).innerText = record.timestamp;
+      newRow.insertCell(1).innerText = record.distance;
+      newRow.insertCell(2).innerHTML = '<input type="checkbox" class="delete-checkbox">';
+    }
+
+    function filterRecords() {
+      const timeframe = document.getElementById('timeframe').value;
+      const tableBody = document.getElementById('data-table').getElementsByTagName('tbody')[0];
+      tableBody.innerHTML = ''; 
+
+      const filteredData = recordedData.filter(record => {
+        const recordDate = new Date(record.timestamp);
+        const now = new Date();
+        if (timeframe === 'day') {
+          return recordDate.getDate() === now.getDate() &&
+                 recordDate.getMonth() === now.getMonth() &&
+                 recordDate.getFullYear() === now.getFullYear();
+        } else if (timeframe === 'week') {
+          const weekStart = now.setDate(now.getDate() - now.getDay());
+          return recordDate >= weekStart;
+        } else if (timeframe === 'month') {
+          return recordDate.getMonth() === now.getMonth() &&
+                 recordDate.getFullYear() === now.getFullYear();
+        }
+      });
+
+      filteredData.forEach(record => addRow(record));
+    }
+
+    function confirmDeleteSelected() {
+      const checkboxes = document.querySelectorAll('.delete-checkbox:checked');
+      if (checkboxes.length === 0) {
+        alert('No records selected for deletion.');
+        return;
+      }
+      const confirmed = confirm(`Are you sure you want to delete ${checkboxes.length} selected record(s)?`);
+      if (confirmed) {
+        checkboxes.forEach(checkbox => {
+          const row = checkbox.closest('tr');
+          row.parentNode.removeChild(row);
+        });
+        alert('Selected records deleted.');
+      }
+    }
+
+    function logout() {
+      window.location.href = 'http://flood-monitoring.local/'; // Redirect to homepage or login page
+    }
+
+    // Theme toggle functionality
+    document.getElementById('theme-toggle').onclick = function() {
+      const currentTheme = document.body.getAttribute('data-theme');
+      document.body.setAttribute('data-theme', currentTheme === 'dark' ? '' : 'dark');
+      this.innerText = currentTheme === 'dark' ? 'Switch to Dark Mode' : 'Switch to Light Mode';
+    };
+  </script>
+</body>
+</html>
